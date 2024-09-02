@@ -1,6 +1,14 @@
 
-from typing import Literal, Sequence
+from typing import Literal, Union
+
+import logging
 import numpy as np
+
+logging.basicConfig(
+    filename="gd_log.log",
+    level=logging.INFO,
+    format='%(asctime)s %(message)s'
+    )
 
 # import matplotlib.pyplot as plt
 # from matplotlib.animation import FuncAnimation
@@ -26,7 +34,8 @@ def update_coef(
     array; `b`, `alpha` are floats; `cost_func` is string representing a cost
     function; `regularize` is boolean; `reg_kwargs` are arguments to pass to
     regularization function: `C` and `power`.
-    Updates coefficients `w` and `b` of a linear model with gradient descent."""
+    Updates coefficients `w` and `b` of a linear model with gradient descent.
+    """
 
     # find derivatives
     if cost_func == "mse":
@@ -57,8 +66,8 @@ def log_update_coef(
         ):
     """Assumes `X` and `y` are array-like of same length; `w` is float when `X`
     is 1-D array and 1-D array of same length as `X`'s width if `X` is 2-D
-    array; `b`, `alpha` are floats; `border_func` is a decision border function;
-    `regularize` is boolean; `reg_kwargs` are arguments to pass to
+    array; `b`, `alpha` are floats; `border_func` is a decision border
+    function; `regularize` is boolean; `reg_kwargs` are arguments to pass to
     regularization function: `C` and `power`.
     Updates coefficients `w` and `b` of a logistic regression model with
     gradient descent."""
@@ -132,8 +141,12 @@ def log_train(
         # report progress
         if e % report == 0:
             cost = log_cost(X, y, w, b, border_func)
+            logging.info(
+                f"epoch: {e}, w: {w}, b: {b:.4f}, cost: {cost:.4f}"
+                )
             print(
-                f"epoch: {e}, w: {w}, b: {b:.4f}, cost: {cost:.4f}")
+                f"epoch: {e}, w: {w}, b: {b:.4f}, cost: {cost:.4f}"
+                )
 
     return w, b
 
@@ -162,14 +175,15 @@ def log_cost(X, y, w, b, border_func=lambda X, w, b: np.dot(X, w) + b,
              regularize=False, **reg_kwargs) -> float:
     """Assumes `X` and `y` are array-like of same length; `w` is float when `X`
     is 1-D array and 1-D array of same length as `X`'s width if `X` is 2-D
-    array; `b`, `alpha` are floats; `border_func` is a decision border function;
-    `regularize` is boolean; `reg_kwargs` are arguments to pass to
+    array; `b`, `alpha` are floats; `border_func` is a decision border
+    function; `regularize` is boolean; `reg_kwargs` are arguments to pass to
     regularization function: `C` and `power`.
     Computes log-likelihood error."""
     reg_ = reg(regularize, X, w, **reg_kwargs)
     z = border_func(X, w, b)
     f = 1 / (1 + np.exp(-z))
     return reg_ + (-y * np.log(f) - (1 - y) * np.log(1 - f)).mean()
+
 
 def reg(regularize, X, w, C=1e-3, power=2) -> float:
     """Assumes `regularize` is boolean; `X` is array-like, `w` is either
@@ -180,7 +194,8 @@ def reg(regularize, X, w, C=1e-3, power=2) -> float:
         return np.sum(np.abs(w)**power * C) / X.shape[0]
     return 0.0
 
-def reg_grad(regularize, X, w, C=1e-3, power=2) -> float or np.ndarray:
+
+def reg_grad(regularize, X, w, C=1e-3, power=2) -> Union[float, np.ndarray]:
     """Assumes `regularize` is boolean; `X` is array-like, `w` is either
     array-like or float; `C` is either float or array-like of the same length
     as `w`; `power` is int.
@@ -189,19 +204,28 @@ def reg_grad(regularize, X, w, C=1e-3, power=2) -> float or np.ndarray:
         return power * (np.abs(w)**(power - 1) * C) / X.shape[0]
     return 0.0
 
+
 def validate_input(X, y, w):
     """Assumes `X` and `y` are array-like, `w` is either array-like or scalar.
     Asserts some conditions for regression model training."""
-    assert X.shape[0] == y.shape[0], "\nNumber of data entries and target "\
-        f"values are not equal.\nThere are {X.shape[0]} data entries and "\
+    assert X.shape[0] == y.shape[0], (
+        "\nNumber of data entries and target "
+        f"values are not equal.\nThere are {X.shape[0]} data entries and "
         f"{y.shape[0]} target values."
+        )
 
     if X.ndim == 1:
-        assert np.isscalar(w), "\n`w` must be scalar when data "\
-            f"entries have only one feature.\`w` passed: {w}"
+        assert np.isscalar(w), (
+            "\n`w` must be scalar when data "
+            f"entries have only one feature. `w` passed: {w}"
+        )
     else:
-        assert not np.isscalar(w), "\n`w` must be array-like when "\
-            f" data entries have more than one feature.\`w` passed: {w}"
-        assert X.shape[1] == w.shape[0], "\nNumber of features in data entries "\
-            "and number of weight coefficients are not equal.\nThere are "\
+        assert not np.isscalar(w), (
+            "\n`w` must be array-like when "
+            f"data entries have more than one feature. `w` passed: {w}"
+            )
+        assert X.shape[1] == w.shape[0], (
+            "\nNumber of features in data entries "
+            "and number of weight coefficients are not equal.\nThere are "
             f"{X.shape[1]} features and {w.shape[0]} weight coefficients."
+            )
